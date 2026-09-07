@@ -49,14 +49,14 @@ jobs:
           cmd /c gclient sync --shallow -D -R
           cmd /c mkdir chrome
           cmd /c powershell -Command "Write-Output "MAJOR=132`nMINOR=0`nBUILD=6998`nPATCH=36"" > chrome/VERSION
-          cmd /c gn gen out/Release --args="is_debug=false is_official_build=true chrome_pgo_phase=false is_chrome_branding=false is_cfi=false enable_stripping=true angle_enable_overlay=false is_component_build=false dcheck_always_on=false symbol_level=0 blink_symbol_level=0 target_cpu=\"x64\" angle_build_all=false angle_enable_gl=false angle_enable_null=false"
-          cmd /c autoninja -C out/Release libGLESv2 libEGL
+          cmd /c gn gen out/Release --args="is_debug=false is_official_build=true chrome_pgo_phase=false is_chrome_branding=false is_cfi=false enable_stripping=true angle_enable_overlay=false is_component_build=false dcheck_always_on=false symbol_level=0 blink_symbol_level=0 target_cpu=\"x64\" angle_build_all=false angle_enable_gl=false angle_enable_null=false angle_enable_vulkan=true"
+          cmd /c autoninja -C out/Release libGLESv2 libEGL libvulkan
       - name: Pack
         shell: bash
         run: |
           mkdir angle-windows-x64
           mkdir angle-windows-x64/dist
-          mv out/Release/libEGL.dll out/Release/libGLESv2.dll angle-windows-x64/dist/
+          mv out/Release/libEGL.dll out/Release/libGLESv2.dll out/Release/libvulkan.dll angle-windows-x64/dist/
           rm -rf out/Release
           cp -rf include angle-windows-x64/
           find angle-windows-x64 -name ".clang-format" -delete
@@ -91,14 +91,14 @@ jobs:
           cmd /c gclient sync --shallow -D -R
           cmd /c mkdir chrome
           cmd /c powershell -Command "Write-Output "MAJOR=132`nMINOR=0`nBUILD=6998`nPATCH=36"" > chrome/VERSION
-          cmd /c gn gen out/Release --args="is_debug=false is_official_build=true chrome_pgo_phase=false is_chrome_branding=false is_cfi=false enable_stripping=true angle_enable_overlay=false is_component_build=false dcheck_always_on=false symbol_level=0 blink_symbol_level=0 is_clang=false use_custom_libcxx=false use_custom_libcxx_for_host=false target_cpu=\"arm64\" angle_enable_gl=false angle_enable_null=false"
-          cmd /c autoninja -C out/Release libGLESv2 libEGL
+          cmd /c gn gen out/Release --args="is_debug=false is_official_build=true chrome_pgo_phase=false is_chrome_branding=false is_cfi=false enable_stripping=true angle_enable_overlay=false is_component_build=false dcheck_always_on=false symbol_level=0 blink_symbol_level=0 is_clang=false use_custom_libcxx=false use_custom_libcxx_for_host=false target_cpu=\"arm64\" angle_enable_gl=false angle_enable_null=false angle_enable_vulkan=true"
+          cmd /c autoninja -C out/Release libGLESv2 libEGL libvulkan
       - name: Pack
         shell: bash
         run: |
           mkdir angle-windows-arm64
           mkdir angle-windows-arm64/dist
-          mv out/Release/libEGL.dll out/Release/libGLESv2.dll angle-windows-arm64/dist/
+          mv out/Release/libEGL.dll out/Release/libGLESv2.dll out/Release/libvulkan.dll angle-windows-arm64/dist/
           rm -rf out/Release
           cp -rf include angle-windows-arm64/
           find angle-windows-arm64 -name ".clang-format" -delete
@@ -198,14 +198,15 @@ jobs:
           python scripts/bootstrap.py
           gclient sync --shallow -D -R
           gn gen out/Release --args="is_debug=false is_official_build=true chrome_pgo_phase=false is_chrome_branding=false is_cfi=false enable_stripping=true angle_enable_overlay=false is_component_build=false dcheck_always_on=false symbol_level=0 blink_symbol_level=0 target_cpu=\"x64\" angle_build_all=false angle_enable_gl=false angle_enable_null=false angle_enable_vulkan=true"
-          autoninja -C out/Release libGLESv2 libEGL
+          autoninja -C out/Release libGLESv2 libEGL libvulkan
       - name: Pack
         run: |
           mkdir angle-linux-x64
           mkdir angle-linux-x64/dist
           strip -s out/Release/libEGL.so
           strip -s out/Release/libGLESv2.so
-          mv out/Release/libEGL.so out/Release/libGLESv2.so angle-linux-x64/dist/
+          strip -s out/Release/libvulkan.so
+          mv out/Release/libEGL.so out/Release/libGLESv2.so out/Release/libvulkan.so angle-linux-x64/dist/
           rm -rf out/Release
           cp -rf include angle-linux-x64/
           find angle-linux-x64 -name ".clang-format" -delete
@@ -242,14 +243,15 @@ jobs:
           gclient sync --shallow -D -R
           build/linux/sysroot_scripts/install-sysroot.py --arch=arm64
           gn gen out/Release --args="is_debug=false is_official_build=true chrome_pgo_phase=false is_chrome_branding=false is_cfi=false enable_stripping=true angle_enable_overlay=false is_component_build=false dcheck_always_on=false symbol_level=0 blink_symbol_level=0 target_cpu=\"arm64\" angle_build_all=false angle_enable_gl=false angle_enable_null=false angle_enable_vulkan=true"
-          autoninja -C out/Release libGLESv2 libEGL
+          autoninja -C out/Release libGLESv2 libEGL libvulkan
       - name: Pack
         run: |
           mkdir angle-linux-arm64
           mkdir angle-linux-arm64/dist
           aarch64-linux-gnu-strip -s out/Release/libEGL.so
           aarch64-linux-gnu-strip -s out/Release/libGLESv2.so
-          mv out/Release/libEGL.so out/Release/libGLESv2.so angle-linux-arm64/dist/
+          aarch64-linux-gnu-strip -s out/Release/libvulkan.so
+          mv out/Release/libEGL.so out/Release/libGLESv2.so out/Release/libvulkan.so angle-linux-arm64/dist/
           rm -rf out/Release
           cp -rf include angle-linux-arm64/
           find angle-linux-arm64 -name ".clang-format" -delete
@@ -289,16 +291,20 @@ jobs:
           mkdir -p out/windows/x64/angle
           cp angle-linux-arm64/dist/libEGL.so out/linux/arm64/angle/
           cp angle-linux-arm64/dist/libGLESv2.so out/linux/arm64/angle/
+          cp angle-linux-arm64/dist/libvulkan.so out/linux/arm64/angle/
           cp angle-linux-x64/dist/libEGL.so out/linux/x64/angle/
           cp angle-linux-x64/dist/libGLESv2.so out/linux/x64/angle/
+          cp angle-linux-x64/dist/libvulkan.so out/linux/x64/angle/
           cp angle-macos-arm64/dist/libEGL.dylib out/macos/arm64/angle/
           cp angle-macos-arm64/dist/libGLESv2.dylib out/macos/arm64/angle/
           cp angle-macos-x64/dist/libEGL.dylib out/macos/x64/angle/
           cp angle-macos-x64/dist/libGLESv2.dylib out/macos/x64/angle/
           cp angle-windows-arm64/dist/libEGL.dll out/windows/arm64/angle/
           cp angle-windows-arm64/dist/libGLESv2.dll out/windows/arm64/angle/
+          cp angle-windows-arm64/dist/libvulkan.dll out/windows/arm64/angle/
           cp angle-windows-x64/dist/libEGL.dll out/windows/x64/angle/
           cp angle-windows-x64/dist/libGLESv2.dll out/windows/x64/angle/
+          cp angle-windows-x64/dist/libvulkan.dll out/windows/x64/angle/
           cd out && zip -r -9 ../gdx-angle-natives.zip . && cd ../
           if [ "$(cat revision.txt 2>/dev/null)" != "$ANGLE_REVISION" ]; then
             echo "$ANGLE_REVISION" > revision.txt
